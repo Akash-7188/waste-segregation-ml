@@ -1,0 +1,27 @@
+# ================= Data =================
+# Datasets are large and have their own licences — do not commit them.
+data/
+*.zip
+*.tar
+*.tar.gz
+
+# ================= Model weights =================
+models/
+*.keras
+*.h5
+*.tflite
+*.ckpt
+
+# ================= Python =================
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# ================= IDE / OS =================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
