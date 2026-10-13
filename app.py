@@ -37,8 +37,8 @@ def predict(image):
     if image.shape[-1] == 4:                  # RGBA -> RGB
         image = image[..., :3]
 
+    # feed RAW [0, 255] pixels — the model rescales internally
     img = tf.image.resize(image, IMG_SIZE).numpy().astype(np.float32)
-    img = (img / 127.5) - 1.0                 # same scaling as training
     probs = model.predict(img[np.newaxis, ...], verbose=0)[0]
 
     result = {c: float(p) for c, p in zip(class_names, probs)}

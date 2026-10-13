@@ -3,7 +3,7 @@ train.py — Train the waste image classifier with transfer learning.
 
 Phase 1 (default): MobileNetV2 base (pre-trained on ImageNet) is FROZEN and
     only the new classification head is trained. Fast, needs little data.
-Phase 2 (optional, --finetune): the top 30 layers of the base are unfrozen
+Phase 2 (optional, --finetune): the whole base network is unfrozen
     and re-trained very gently (lr = 1e-5) to squeeze out extra accuracy.
 
 Usage:
@@ -48,7 +48,7 @@ def build_model(n_classes: int) -> tf.keras.Model:
     x = layers.Rescaling(1.0 / 127.5, offset=-1)(x)  # pixels -> [-1, 1] as MobileNetV2 expects
     x = base(x, training=False)
     x = layers.GlobalAveragePooling2D()(x)
-    x = layers.Dropout(0.3)(x)                        # prevents memorising (overfitting)
+    x = layers.Dropout(0.2)(x)                        # prevents memorising (overfitting)
     outputs = layers.Dense(n_classes, activation="softmax")(x)
     return tf.keras.Model(inputs, outputs, name="waste_classifier")
 
@@ -72,7 +72,7 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=20)
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--finetune", action="store_true",
-                    help="phase 2: unfreeze the top 30 base layers and re-train gently")
+                    help="phase 2: unfreeze the full base network and re-train gently")
     ap.add_argument("--out_dir", type=Path, default=Path("models"))
     ap.add_argument("--assets_dir", type=Path, default=Path("assets"))
     args = ap.parse_args()
@@ -98,12 +98,10 @@ def main() -> None:
                              "(python src/train.py --epochs 20)")
         model = tf.keras.models.load_model(model_path)
         base = model.get_layer("mobilenetv2_1.00_224")
-        base.trainable = True
-        for layer in base.layers[:-30]:  # keep all but the top 30 layers frozen
-            layer.trainable = False
+        base.trainable = True  # fine-tune the whole base network, very gently
         model.compile(optimizer=tf.keras.optimizers.Adam(1e-5),  # very small LR!
                       loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-        print("\n=== Phase 2: fine-tuning the top 30 base layers (lr = 1e-5) ===")
+        print("\n=== Phase 2: fine-tuning the full base network (lr = 1e-5) ===")
     else:
         model = build_model(len(class_names))
         model.compile(optimizer="adam",
@@ -113,7 +111,7 @@ def main() -> None:
     model.summary()
 
     callbacks = [tf.keras.callbacks.EarlyStopping(
-        patience=3, restore_best_weights=True, monitor="val_accuracy")]
+        patience=5, restore_best_weights=True, monitor="val_accuracy")]
 
     history = model.fit(train_ds, validation_data=val_ds,
                         epochs=args.epochs, callbacks=callbacks)

@@ -21,13 +21,17 @@ IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
 def load_image(path: Path):
-    """Read, resize and scale an image exactly like training did."""
+    """Read and resize an image exactly like the training pipeline did.
+
+    Note: pixels are returned RAW in [0, 255] — the model contains its own
+    Rescaling layer, so we must NOT scale here (that would double-scale and
+    break predictions).
+    """
     import tensorflow as tf
     raw = tf.io.read_file(str(path))
     img = tf.image.decode_image(raw, channels=3, expand_animations=False)
-    img = tf.image.resize(img, IMG_SIZE)
-    img = (img.numpy().astype(np.float32) / 127.5) - 1.0  # -> [-1, 1]
-    return img[np.newaxis, ...]
+    img = tf.image.resize(img, IMG_SIZE)   # float32, [0, 255]
+    return img.numpy().astype(np.float32)[np.newaxis, ...]
 
 
 def main() -> None:
